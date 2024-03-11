@@ -281,8 +281,10 @@ func decodeSchedulerCfg(buf []byte) (*configv1.KubeSchedulerConfiguration, error
 }
 
 func GetKubeClientConfig() (*rest.Config, error) {
+	loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
+	loadingRules.ExplicitPath = "/etc/kubernetes/scheduler.conf"
 	kubeConfig := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
-		clientcmd.NewDefaultClientConfigLoadingRules(), &clientcmd.ConfigOverrides{})
+		loadingRules, &clientcmd.ConfigOverrides{})
 	clientConfig, err := kubeConfig.ClientConfig()
 	if err != nil {
 		return nil, xerrors.Errorf("get client config: %w", err)

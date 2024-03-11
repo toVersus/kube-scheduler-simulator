@@ -2,7 +2,6 @@ package externalscheduler
 
 import (
 	"context"
-	"flag"
 	"os"
 
 	"golang.org/x/xerrors"
@@ -13,13 +12,11 @@ import (
 	_ "k8s.io/component-base/logs/json/register" // for JSON log format registration
 	_ "k8s.io/component-base/metrics/prometheus/clientgo"
 	_ "k8s.io/component-base/metrics/prometheus/version" // for version metric registration
-	"k8s.io/klog/v2"
 	v1 "k8s.io/kube-scheduler/config/v1"
 	"k8s.io/kubernetes/cmd/kube-scheduler/app"
 	"k8s.io/kubernetes/pkg/scheduler/apis/config"
 	"k8s.io/kubernetes/pkg/scheduler/apis/config/scheme"
 	configv1 "k8s.io/kubernetes/pkg/scheduler/apis/config/v1"
-	configv1beta3 "k8s.io/kubernetes/pkg/scheduler/apis/config/v1beta3"
 	"k8s.io/kubernetes/pkg/scheduler/framework/runtime"
 
 	simulatorconfig "sigs.k8s.io/kube-scheduler-simulator/simulator/config"
@@ -46,23 +43,12 @@ func CreateOptionForOutOfTreePlugin(outOfTreePluginRegistry runtime.Registry, pl
 		simulatorschedulerconfig.SetOutOfTreeRegistries(outOfTreePluginRegistry)
 	}
 
-	// flags defined in the upstream scheduler
-	configFile := flag.String("config", "", "")
-	master := flag.String("master", "", "")
-	flag.Parse()
-
 	var versionedcfg *v1.KubeSchedulerConfiguration
 	var err error
-	if configFile == nil {
-		versionedcfg, err = simulatorschedulerconfig.DefaultSchedulerConfig()
-		if err != nil {
-			return nil, nil, xerrors.Errorf("get default scheduler config: %w", err)
-		}
-	} else {
-		versionedcfg, err = loadConfigFromFile(*configFile)
-		if err != nil {
-			return nil, nil, xerrors.Errorf("load scheduler config: %w", err)
-		}
+
+	versionedcfg, err = simulatorschedulerconfig.DefaultSchedulerConfig()
+	if err != nil {
+		return nil, nil, xerrors.Errorf("get default scheduler config: %w", err)
 	}
 
 	versioned, err := scheduler.ConvertConfigurationForSimulator(versionedcfg)
@@ -86,7 +72,7 @@ func CreateOptionForOutOfTreePlugin(outOfTreePluginRegistry runtime.Registry, pl
 		return nil, nil, xerrors.Errorf("get kubeconfig: %w", err)
 	}
 	if internalCfg.ClientConnection.Kubeconfig != "" {
-		kubeconfig, err = createKubeConfig(internalCfg.ClientConnection, *master)
+		kubeconfig, err = createKubeConfig(internalCfg.ClientConnection, "")
 		if err != nil {
 			return nil, nil, xerrors.Errorf("get kubeconfig specified in config: %w", err)
 		}
@@ -163,10 +149,6 @@ func loadConfig(data []byte) (*v1.KubeSchedulerConfiguration, error) {
 		// conversion. See KubeSchedulerConfiguration internal type definition for
 		// more details.
 		cfgObj.TypeMeta.APIVersion = gvk.GroupVersion().String()
-		if cfgObj.TypeMeta.APIVersion == configv1beta3.SchemeGroupVersion.String() {
-			klog.InfoS("KubeSchedulerConfiguration v1beta3 is deprecated in v1.26, will be removed in v1.29")
-		}
-
 		return convertSchedulerConfigToV1Config(cfgObj)
 	}
 	return nil, xerrors.Errorf("couldn't decode as KubeSchedulerConfiguration, got %s", gvk)

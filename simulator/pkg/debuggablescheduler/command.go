@@ -14,7 +14,7 @@ func NewSchedulerCommand(opts ...Option) (*cobra.Command, func(), error) {
 		o(opt)
 	}
 
-	scheduleropts, cancelFn, err := CreateOptionForOutOfTreePlugin(opt.outOfTreeRegistry, opt.pluginExtender)
+	scheduleropts, cancelFn, err := CreateOptionForOutOfTreePlugin(opt.outOfTreeRegistry, opt.pluginExtender, opt.configPath)
 	if err != nil {
 		return nil, cancelFn, err
 	}
@@ -27,6 +27,7 @@ func NewSchedulerCommand(opts ...Option) (*cobra.Command, func(), error) {
 type options struct {
 	outOfTreeRegistry runtime.Registry
 	pluginExtender    map[string]plugin.PluginExtenderInitializer
+	configPath        string
 }
 
 type Option func(opt *options)
@@ -42,5 +43,11 @@ func WithPlugin(pluginName string, factory runtime.PluginFactory) Option {
 func WithPluginExtenders(pluginName string, e plugin.PluginExtenderInitializer) Option {
 	return func(opt *options) {
 		opt.pluginExtender[pluginName] = e
+	}
+}
+
+func WithSchedulerConfig(configPath string) Option {
+	return func(opt *options) {
+		opt.configPath = configPath
 	}
 }
